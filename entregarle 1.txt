@@ -1,0 +1,171 @@
+Conjunto de datos 
+Se ha  seleccionado el conjunto de datos abiertos **calidad del aire (datos horarios) del Ayuntamiento de Madrid**,  que resgistra las mediciones de  contaminantes 
+de la  red municipal de estaciones.Cumple los  criterios de eligibilidad del enunciado: 
+licencia abierta,diccionario de datos, volumen suficientes, dimensión temporal superior a doce meses, varias dimensiones categoricas y variable númericas con 
+significado ambiental. 
+
+
+###Ficha del datatest
+
+|Campo|Respuesta|
+|---|---|
+|Nombre|Calidad del aire.Datos horarios desde 2001 |
+|Editor y  URL |Ayuntamiento de Madrid portal de datos.madrid.es. |
+|Licencia| Condicones de reutalización del portal de datos abiertos del 
+Ayuntamiento de Madrid (reutilización con atribución). *Nombre exacto y enlace:
+verificar en la ficha del conjunto antes de la entrega.* |
+
+|Fecha de descarga y versión|*Completar el día de la descarga* (serie anual 
+publicada por el editor) |
+
+| Granularidad | Una fila por estación, magnitud y  día, con 24 valores horarios 
+y sus indicadores de validez (V01–V24) |
+|Periodo cubierto | 2019-2025 (siete años completos) |
+| Tamaño | Aproximadamente 60.000 filas por año; unos 400.000 registros en total tras 
+cargar el periodo; 50 columnas |
+| Columnas clave| Fecha (año,mes,día); dimensiones: estación, magnitud, zona; 
+medidas: concentración horaria por contaminante; objetivo candidato: superación de un 
+umbral diario de NO₂ |
+|Problemas de calidad detectados| Formato ancho  (horas  en cloumnas), valores no 
+válidos marcados con indicador, estaciones que dejan de operar o se incorporan,
+cambios en la codificación entre años| 
+
+
+|Otras fuentes a combinar | Datos meteorologicos horarios del mismo portal 
+(temperatura,viento, precipitación) y calendario laboral/festivos |
+
+
+
+## 2. Planteamiento del problema de negocio
+
+
+
+### 2.1 Organización, departamento y responsable
+
+
+- **Organización:** Ayuntamiento de Madrid, administración local responsable de la 
+gestión ambiental y de la movilidad urrbana. 
+
+- **Departamento:**equipo técnico de   vigilancia y gestión de la calidad del aire del 
+área de  Medio Ambiente y Movilidad, encargado de activar los escenarios del protocolo 
+municipal por episodios de contaminación. 
+
+- **Responsable de la decisión:**la persona responsable  de calidad del aire, que
+consulta el cuadro de mando a diario (y varias veces al día en episodios) y puede
+proponer la activación de medidas de restricción de tráfico. 
+
+
+### 2.2 Decisión a apoyar
+
+**Restricciones:**el protocolo esblece umbrales y plazos de aviso; las medidas 
+tienen coste social y político; el modelo solo dispone de datos de la red existente y 
+no de tráfico en tiempo real; la información tiene que ser comprensible para perfiles 
+no técnicos. 
+
+### 2.3 Hipótesis
+| | |
+|---|---|
+| **H1** | Los niveles  de NO₂ se concentran en las franjas de mayor tráfico (horas
+punta laborables) y son significativamente más altos en las estaciones de tráfico que 
+en las de fondo|
+
+| Métrica | Concentración media horaria de NO₂ por franja y tipo de estación. | 
+
+|Dirección esperada | Mayor en horas punta y en estaciones de tráfico.| 
+
+| Cómo se contrasta | Pefil horario por tipo de estación y comparación de medias con 
+intervalo de confianza.|
+
+| Si se cumple → | Concentrar la vigilancia y las medidas en esas franjas y zonas. |
+| Si no → | Revisar el diseño de las medidas, que no estarían atacando la fuente principal. |
+
+| **H2** |Los episodios de superación de umbral se asocian a condiciones 
+meteorólogicas de poco viento y estabilidad atmosférica, más que a un aumento del 
+tráfico. |
+
+| Métrica | Correlación entre velocidad del viento y NO₂ diario; frecuencia de 
+superaciones con viento bajo. 
+| Dirección esperada | Relación inversa entre viento y concentración. |
+| Cómo se contrasta | Diagrama de dispersión, correlación y comparación de días con y sin superación. |
+| Si se cumple → | Utilizar la previsión meteorológica como señal de alerta temprana. |
+| Si no → | Priorizar el control de las emisiones sobre la anticipación meteorológica. |
+
+| **H3** | Los días festivos y fines de semana presentan niveles de NO₂ inferiores en al menos un 20 % respecto a los laborables comparables. |
+
+
+| Métrica | Diferencia relativa de la media diaria entre días laborables y no laborables, por mes. |
+| Dirección esperada | Descenso en días no laborables. |
+| Cómo se contrasta | Comparación de medias estratificada por mes y estación. |
+| Si se cumple → | Dirigir las restricciones a los días laborables. |
+| Si no → | Investigar otras fuentes emisoras no ligadas a la actividad laboral. |
+
+
+
+### 2.4 Indicadores clave (KPI)
+
+| KPI | Definición | Granularidad | Dimensión | Objetivo |
+|---|---|---|---|---|
+| Media anual de NO₂ | Promedio de valores horarios válidos | Estación y año | Estación, zona | Valor límite de la normativa europea vigente |
+| Días con superación de umbral | Número de días con media diaria por encima del umbral definido | Estación y mes | Estación, mes | Reducción interanual |
+| Horas de superación del valor horario | Horas con concentración sobre el umbral horario | Estación y día | Estación, hora | Tendencia a cero |
+| Porcentaje de datos válidos | Valores válidos / valores esperados | Estación y mes | Estación | Mínimo exigido para el cálculo de indicadores |
+
+El KPI «días con superación de umbral» se vincula directamente con H2 y H3.
+
+## 3. Diseño de la solución
+
+### 3.1 Tipo de solución
+
+**Motor analítico con cuadro de mando** (principal: motor analítico).
+
+- **Entradas:** series horarias de contaminantes, variables meteorológicas y calendario.
+- **Lógica:** modelo de previsión (esbozado, se desarrollará en el bloque 3) que estima la probabilidad de superar el umbral de NO₂ en las siguientes 24 horas por estación.
+- **Salidas:** semáforo de riesgo por zona y ranking de estaciones, mostrado en el cuadro de mando.
+
+### 3.2 Arquitectura general
+
+```mermaid
+flowchart LR
+    A[Fuente<br/>datos.madrid.es, CSV] --> B[Ingestión<br/>script de descarga, pandas]
+    B --> C[Limpieza y calidad<br/>tipos, nulos, validez, outliers]
+    C --> D[Modelo de datos<br/>hechos + dimensiones, parquet]
+    D --> E[Analítica / motor<br/>KPI y modelo predictivo]
+    E --> F[Cuadro de mando<br/>Streamlit / Power BI]
+    F --> G((Responsable<br/>decisión))
+```
+
+| Capa | Función en el proyecto | Herramienta | Actualización |
+|---|---|---|---|
+| Fuente | Series horarias de calidad del aire y meteorología | Portal datos.madrid.es | Según publicación del editor |
+| Ingestión | Descarga y carga de los ficheros anuales | Python, pandas | Programada |
+| Limpieza y calidad | Paso a formato largo, filtrado por validez, tratamiento de nulos y duplicados | pandas | Con cada carga |
+| Modelo de datos | Tabla de hechos de mediciones; dimensiones de estación, magnitud y fecha | Parquet | Con cada carga |
+| Analítica / motor | Cálculo de KPI y modelo de previsión | pandas, scikit-learn | Diaria |
+| Cuadro de mando | Visualización de KPI y alertas con filtros | Streamlit o Power BI | Diaria |
+
+**Actualización y responsabilidad:** 
+
+
+**Riesgos principales:**
+1. Cambios o interrupciones en la publicación de los datos por el editor.
+2. Cambios en la licencia o en las condiciones de reutilización.
+3. Desajuste entre las estaciones de calidad del aire y las meteorológicas al combinarlas, y huecos por mantenimiento o fallos de sensores.
+
+
+
+## 4. Autoevaluación
+
+| Criterio | Nivel previsto | Justificación |
+|---|---|---|
+| Dataset | Pasa/Mérito | Ficha completa; problemas de calidad identificados; segunda fuente (meteorología) prevista |
+| Planteamiento | Mérito | Decisión y restricciones explícitas |
+| Hipótesis y KPI | Mérito | Cada hipótesis incluye contraste y consecuencia en ambos sentidos |
+| Solución y arquitectura | Mérito | Entradas, lógica y salidas concretas; actualización y riesgos indicados |
+| Comunicación | Pasa | Documento estructurado y dentro de la extensión |
+
+## Fuentes
+
+- Ayuntamiento de Madrid. *Calidad del aire. Datos horarios desde 2001.* 
+- Ayuntamiento de Madrid. *Datos meteorológicos horarios.* 
+
+
